@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Анти-ИИ Электронное зеркало</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:#000;min-height:100vh;display:flex;justify-content:center;align-items:center;}
+        /* экран 9:16 */
+        .screen{position:relative;width:100vw;height:100vh;max-width:450px;max-height:800px;aspect-ratio:9/16;background:#000;overflow:hidden;margin:auto;}
+        /* контейнер слоёв */
+        .layers{position:absolute;top:0;left:0;width:100%;height:100%;}
+        .layers img,.layers video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;}
+        /* увеличенная кнопка звука */
+        .sound-btn{position:absolute;top:18px;left:18px;z-index:30;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);border-radius:60px;border:1px solid rgba(255,255,255,0.4);padding:12px 26px;cursor:pointer;display:flex;align-items:center;gap:12px;font-weight:bold;font-size:1.4rem;color:white;transition:0.1s ease;font-family:system-ui;}
+        .sound-btn:active{transform:scale(0.96);}
+        .sound-btn .ico{font-size:1.9rem;}
+        .sound-btn .txt{font-size:1.25rem;}
+        @media (max-width:480px){.sound-btn{padding:8px 20px;}.sound-btn .ico{font-size:1.6rem;}.sound-btn .txt{font-size:1.1rem;}}
+        
+        /* Логотип и название на 2 странице */
+        .logo-header {
+            position: absolute;
+            top: 16px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 35;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .logo-header img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            padding: 4px;
+        }
+        .logo-header span {
+            font-size: 1rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, #fff, #38bdf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        /* Стили для страницы 2 (Анти-ИИ Зеркало) */
+        .mirror-full {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: #0b1120;
+            overflow-y: auto;
+            display: none;
+        }
+        .mirror-full.show {
+            display: block;
+        }
+        .mirror-container {
+            max-width: 550px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            padding-top: 70px;
+        }
+        
+        /* Стили для модального окна настроек в зеркале */
+        .settings-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .settings-modal.show {
+            display: flex;
+        }
+        .settings-panel {
+            background: #1e293b;
+            border-radius: 40px;
+            width: 90%;
+            max-width: 400px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .settings-header h3 {
+            color: #38bdf8;
+            font-size: 1.3rem;
+        }
+        .settings-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .settings-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .settings-btn {
+            padding: 12px;
+            border-radius: 40px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            background: rgba(56,189,248,0.15);
+            color: white;
+        }
+        .settings-btn.danger {
+            background: rgba(239,68,68,0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .calib-panel-inline {
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+            padding: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+        .calib-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+        .calib-row input {
+            width: 80px;
+            padding: 6px;
+            border-radius: 10px;
+            background: #0f172a;
+            color: white;
+            border: 1px solid #38bdf8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- СТРАНИЦА 1: Фото → Видео (9:16) -->
+<div class="screen" id="page1">
+    <div class="layers">
+        <img id="photo" src="frame.jpg" style="z-index:2">
+        <video id="introVideo" src="cube.mp4" muted playsinline preload="auto" style="z-index:1"></video>
+    </div>
+    <button id="soundBtn" class="sound-btn"><span class="ico">🔇</span><span class="txt">Вкл звук</span></button>
+</div>
+
+<!-- СТРАНИЦА 2: Анти-ИИ Зеркало (основной проект) -->
+<div id="page2" class="mirror-full">
+    <div class="logo-header">
+        <img src="favicon.ico" alt="logo" onerror="this.style.display='none'">
+        <span>Анти-ИИ Электронное зеркало</span>
+    </div>
+    <div class="mirror-container" id="mirrorAppContainer">
+        <!-- Сюда будет загружен основной код зеркала -->
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ: 2 секунды фото → 3 секунды видео → переход на зеркало
+    // ============================================================
+    
+    const page1 = document.getElementById('page1');
+    const page2 = document.getElementById('page2');
+    const photo = document.getElementById('photo');
+    const introVideo = document.getElementById('introVideo');
+    const soundBtn = document.getElementById('soundBtn');
+    const ico = soundBtn.querySelector('.ico');
+    const txt = soundBtn.querySelector('.txt');
+    
+    let soundOn = false;
+    let videoStarted = false;
+    let transitionDone = false;
+    
+    // Кнопка звука
+    function updateSoundBtn() {
+        if (soundOn) {
+            ico.innerText = '🔊';
+            txt.innerText = 'Звук вкл';
+        } else {
+            ico.innerText = '🔇';
+            txt.innerText = 'Вкл звук';
+        }
+    }
+    
+    soundBtn.onclick = () => {
+        if (soundOn) {
+            introVideo.muted = true;
+            soundOn = false;
+        } else {
+            introVideo.muted = false;
+            soundOn = true;
+            if (videoStarted && introVideo.paused) {
+                introVideo.play().catch(() => {});
+            }
+        }
+        updateSoundBtn();
+    };
+    
+    // Переход на страницу 2 (Анти-ИИ Зеркало)
+    function goToMirror() {
+        if (transitionDone) return;
+        transitionDone = true;
+        
+        // Плавно скрываем страницу 1
+        page1.style.transition = 'opacity 0.5s';
+        page1.style.opacity = '0';
+        
+        setTimeout(() => {
+            page1.style.display = 'none';
+            page2.classList.add('show');
+            
+            // Загружаем основной код зеркала динамически
+            loadMirrorApp();
+        }, 500);
+    }
+    
+    // Загрузка основного приложения зеркала
+    function loadMirrorApp() {
+        const container = document.getElementById('mirrorAppContainer');
+        if (!container) return;
+        
+        // Основной код зеркала
+        container.innerHTML = `
+            <style>
+                :root {
+                    --primary: #38bdf8; --bg: #0b1120; --card: rgba(15, 23, 42, 0.95);
+                    --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
+                    --text: #e2e8f0; --muted: #94a3b8;
+                }
+                .mirror-container *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
+                .mirror-container{font-family:system-ui,sans-serif;color:var(--text)}
+                .mirror-container .app{background:var(--card);backdrop-filter:blur(25px);border-radius:40px;padding:20px;border:1px solid rgba(255,255,255,0.1)}
+                .mirror-container .camera-container{position:relative;background:#000;border-radius:24px;overflow:hidden;aspect-ratio:3/4;margin-bottom:14px;border:1px solid rgba(255,255,255,0.15)}
+                .mirror-container video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+                .mirror-container .overlay{position:absolute;inset:0;pointer-events:none;z-index:10}
+                .mirror-container .face-oval{position:absolute;top:12%;left:12%;width:76%;height:72%;border:2px dashed rgba(56,189,248,0.35);border-radius:50% 50% 45% 45%}
+                .mirror-container .eye-line{position:absolute;top:38%;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#ff3366,#ff3366,transparent);opacity:0.7}
+                .mirror-container .metrics-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+                .mirror-container .metric-top-card{background:rgba(255,255,255,0.06);border-radius:20px;padding:12px;text-align:center}
+                .mirror-container .metric-top-value{font-size:1.4rem;font-weight:800;color:var(--primary)}
+                .mirror-container .metric-top-label{font-size:0.65rem;color:var(--muted);margin-top:4px}
+                .mirror-container .metrics-live{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+                .mirror-container .metric-card{background:rgba(255,255,255,0.06);border-radius:16px;padding:10px 8px;text-align:center;border:1px solid rgba(255,255,255,0.08)}
+                .mirror-container .metric-icon{font-size:1.3rem;margin-bottom:4px}
+                .mirror-container .metric-val{font-size:1.1rem;font-weight:800;font-family:monospace;color:var(--primary)}
+                .mirror-container .metric-label{font-size:0.6rem;color:var(--muted);margin-top:2px}
+                .mirror-container .distance-info{background:rgba(56,189,248,0.1);border-radius:20px;padding:10px;margin-bottom:12px;text-align:center}
+                .mirror-container .dist-big{font-size:2rem;font-weight:800;color:var(--primary)}
+                .mirror-container .traffic-lights{display:flex;justify-content:center;gap:16px;margin:12px 0}
+                .mirror-container .light{width:45px;height:45px;border-radius:50%;background:#1e293b;transition:0.2s}
+                .mirror-container .light.red.active{background:#ef4444;box-shadow:0 0 15px #ef4444}
+                .mirror-container .light.yellow.active{background:#f59e0b;box-shadow:0 0 15px #f59e0b}
+                .mirror-container .light.green.active{background:#10b981;box-shadow:0 0 15px #10b981}
+                .mirror-container .status-bar{text-align:center;font-weight:700;font-size:0.85rem;padding:12px;border-radius:18px;margin-bottom:10px;background:rgba(0,0,0,0.4)}
+                .mirror-container .btn-group{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+                .mirror-container .btn{padding:14px;border-radius:40px;font-weight:700;border:none;cursor:pointer;background:rgba(56,189,248,0.15);color:white}
+                .mirror-container .btn-main{background:#10b981;color:#fff}
+                .mirror-container .btn-sub{background:#38bdf8;color:#0f172a}
+                .mirror-container .btn-settings{background:#818cf8;color:#0f172a}
+                .mirror-container .btn-support{background:rgba(16,185,129,0.2);border:1px solid #10b981;color:#6ee7b7}
+                .mirror-container .btn-torch{background:#f59e0b;color:#1a1a1a}
+                .mirror-container .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:#1e293b;padding:10px 20px;border-radius:40px;transition:0.2s;z-index:1000}
+                .mirror-container .toast.show{transform:translateX(-50%) translateY(0)}
+                .mirror-container .footer{font-size:0.6rem;text-align:center;color:#475569;margin-top:16px}
+                .mirror-container .method-badge{font-size:0.65rem;color:#94a3b8;margin-top:4px}
+                .mirror-container .graph-section{margin-top:20px;background:rgba(255,255,255,0.03);border-radius:24px;padding:16px;display:none}
+                .mirror-container .graph-title{color:#38bdf8;font-weight:700;margin-bottom:12px}
+                .mirror-container .graph-canvas{width:100%;height:auto;background:#0a0f1a;border-radius:16px}
+                .mirror-container .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+                .mirror-container .legend-item{display:flex;align-items:center;gap:6px;font-size:0.65rem}
+                .mirror-container .legend-color{width:14px;height:14px;border-radius:3px}
+                .mirror-container .voice-status{font-size:0.65rem;text-align:center;margin-top:6px;color:#94a3b8}
+            </style>
+            <div class="app">
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline muted></video>
+                    <canvas id="overlayCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+                    <div class="overlay">
+                        <div class="eye-line"></div>
+                        <div class="face-oval"></div>
+                    </div>
+                </div>
+                <div class="metrics-top">
+                    <div class="metric-top-card"><div class="metric-top-value" id="lightVal">— лк</div><div class="metric-top-label">💡 ОСВЕЩЕНИЕ</div></div>
+                    <div class="metric-top-card"><div class="metric-top-value" id="distVal">— см</div><div class="metric-top-label">📏 ДИСТАНЦИЯ</div></div>
+                </div>
+                <div class="metrics-live">
+                    <div class="metric-card"><div class="metric-icon">🌡️</div><div class="metric-val" id="valRedness">—</div><div class="metric-label">Покраснение</div></div>
+                    <div class="metric-card"><div class="metric-icon">🧴</div><div class="metric-val" id="valDryness">—</div><div class="metric-label">Сухость кожи</div></div>
+                    <div class="metric-card"><div class="metric-icon">💧</div><div class="metric-val" id="valSwelling">—</div><div class="metric-label">Отёчность</div></div>
+                </div>
+                <div class="distance-info">
+                    <div class="dist-big" id="distanceDisplay">— см</div>
+                    <div class="method-badge" id="methodInfo">📏 ожидание...</div>
+                </div>
+                <div class="traffic-lights">
+                    <div class="light red" id="redLight"></div>
+                    <div class="light yellow" id="yellowLight"></div>
+                    <div class="light green" id="greenLight"></div>
+                </div>
+                <div class="status-bar" id="statusText">🔴 Нажмите «Запустить сканер»</div>
+                <div class="voice-status" id="voiceStatusText"></div>
+                <div class="graph-section" id="graphSection">
+                    <div class="graph-title">📈 ДИНАМИКА ПОКАЗАТЕЛЕЙ</div>
+                    <canvas id="trendGraphCanvas" class="graph-canvas" width="500" height="280"></canvas>
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-color" style="background:#10b981;"></div><span>Эталон (0%)</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div><span>Сухость кожи</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div><span>Покраснение</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div><span>Отёчность</span></div>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button id="startBtn" class="btn-main">📷 ЗАПУСТИТЬ СКАНЕР</button>
+                    <button id="saveBtn" class="btn-sub" disabled>📌 СОХРАНИТЬ ЗАМЕР</button>
+                    <button id="settingsBtn" class="btn-settings">⚙️ НАСТРОЙКИ</button>
+                    <button id="showGraphBtn" class="btn-sub">📊 ПОКАЗАТЬ ГРАФИК</button>
+                    <button id="torchBtn" class="btn-torch">🔦 ФОНАРИК</button>
+                    <button id="supportMainBtn" class="btn-support">🤝 ПОДДЕРЖАТЬ ПРОЕКТ</button>
+                </div>
+                <div class="footer"></div>
+            </div>
+            <div id="settingsModal" class="settings-modal">
+                <div class="settings-panel">
+                    <div class="settings-header"><h3>⚙️ НАСТРОЙКИ</h3><button id="closeSettingsBtn" class="settings-close">✕</button></div>
+                    <div class="settings-buttons">
+                        <button id="whiteCalibSettingsBtn" class="settings-btn">📄 КАЛИБРОВКА БЕЛЫМ ЛИСТОМ</button>
+                        <div id="whiteCalibInline" class="calib-panel-inline"><p>Поднесите белый лист к камере</p><button id="doWhiteCalibInlineBtn" class="btn-sub">✅ ВЫПОЛНИТЬ</button></div>
+                        <button id="distanceCalibSettingsBtn" class="settings-btn">⚙️ КАЛИБРОВКА РАССТОЯНИЯ</button>
+                        <div id="distanceCalibInline" class="calib-panel-inline">
+                            <div class="calib-row"><span>📏 Расстояние между глазами (см):</span><input type="number" id="eyeDistanceInput" step="0.1" min="5" max="8" value="6.5"></div>
+                            <div class="calib-row"><span>🔧 Фокусное расстояние (пикс):</span><input type="number" id="focalInput" step="10" min="400" max="1200" value="700"></div>
+                            <button id="saveDistanceCalibBtn" class="btn-sub">✅ СОХРАНИТЬ</button>
+                        </div>
+                        <button id="themeSettingsBtn" class="settings-btn">🎨 СМЕНИТЬ ТЕМУ</button>
+                        <button id="exportReportSettingsBtn" class="settings-btn">📄 СКАЧАТЬ ОТЧЁТ</button>
+                        <button id="exportJsonSettingsBtn" class="settings-btn">📦 ЭКСПОРТ JSON</button>
+                        <button id="voiceSettingsBtn" class="settings-btn">🔇 ГОЛОС</button>
+                        <button id="howToUseSettingsBtn" class="settings-btn">❓ КАК ПОЛЬЗОВАТЬСЯ</button>
+                        <button id="deleteSettingsBtn" class="settings-btn danger">🗑️ ОЧИСТИТЬ ПАМЯТЬ</button>
+                    </div>
+                </div>
+            </div>
+            <div id="toast" class="toast"></div>
+        `;
+        
+        // Загружаем MediaPipe и основной скрипт
+        const mediapipeScript = document.createElement('script');
+        mediapipeScript.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js';
+        mediapipeScript.onload = () => {
+            const mainScript = document.createElement('script');
+            mainScript.textContent = getMirrorScript();
+            container.appendChild(mainScript);
+        };
+        document.head.appendChild(mediapipeScript);
+    }
+    
+    function getMirrorScript() {
+        return `
+            (function(){
+                // ЭЛЕМЕНТЫ
+                const video = document.getElementById('video');
+                const overlayCanvas = document.getElementById('overlayCanvas');
+                const ctx = overlayCanvas.getContext('2d');
+                const distanceSpan = document.getElementById('distanceDisplay');
+                const methodInfo = document.getElementById('methodInfo');
+                const redLight = document.getElementById('redLight');
+                const yellowLight = document.getElementById('yellowLight');
+                const greenLight = document.getElementById('greenLight');
+                const statusDiv = document.getElementById('statusText');
+                const startBtn = document.getElementById('startBtn');
+                const saveBtn = document.getElementById('saveBtn');
+                const settingsBtn = document.getElementById('settingsBtn');
+                const settingsModal = document.getElementById('settingsModal');
+                const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+                const showGraphBtn = document.getElementById('showGraphBtn');
+                const torchBtn = document.getElementById('torchBtn');
+                const supportMainBtn = document.getElementById('supportMainBtn');
+                const toastEl = document.getElementById('toast');
+                const voiceStatusText = document.getElementById('voiceStatusText');
+                const graphSection = document.getElementById('graphSection');
+                const lightValEl = document.getElementById('lightVal');
+                const distValEl = document.getElementById('distVal');
+                const valRedness = document.getElementById('valRedness');
+                const valDryness = document.getElementById('valDryness');
+                const valSwelling = document.getElementById('valSwelling');
+                
+                // ПЕРЕМЕННЫЕ
+                let stream = null;
+                let active = false;
+                let faceMesh = null;
+                let currentDistance = null;
+                let distanceHistory = [];
+                let currentLux = 0;
+                let luxHistory = [];
+                let eyeDistanceCm = parseFloat(localStorage.getItem('eyeDistanceCm') || '6.5');
+                let focalLength = parseInt(localStorage.getItem('focalLength') || '700');
+                let measurementsHistory = JSON.parse(localStorage.getItem('measurements_history') || '[]');
+                let baselineMeasurement = JSON.parse(localStorage.getItem('faceBase') || 'null');
+                let metricsHistory = JSON.parse(localStorage.getItem('metrics_history') || '[]');
+                let baselineMetrics = JSON.parse(localStorage.getItem('baseline_metrics') || 'null');
+                let currentMetrics = null;
+                let voiceEnabled = localStorage.getItem('mirror_voice') === 'true';
+                let speechSupported = 'speechSynthesis' in window;
+                let currentTheme = 'dark';
+                let canvas40x30 = null;
+                let lastDistances = [];
+                
+                // ВСПОМОГАТЕЛЬНЫЕ
+                function showToast(msg, isErr){
+                    toastEl.textContent = msg;
+                    toastEl.style.background = isErr ? '#ef4444' : '#10b981';
+                    toastEl.classList.add('show');
+                    setTimeout(()=>toastEl.classList.remove('show'),2000);
+                }
+                function speakText(text){
+                    if(!voiceEnabled || !speechSupported) return;
+                    try{
+                        window.speechSynthesis.cancel();
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.lang = 'ru-RU';
+                        utterance.rate = 0.9;
+                        utterance.pitch = 0.8;
+                        window.speechSynthesis.speak(utterance);
+                    }catch(e){}
+                }
+                function updateVoiceStatusDisplay(){
+                    if(!voiceStatusText) return;
+                    if(!speechSupported) voiceStatusText.innerHTML = '🔇 Голос: не поддерживается';
+                    else if(voiceEnabled) voiceStatusText.innerHTML = '🎤 Голос: активен';
+                    else voiceStatusText.innerHTML = '🔇 Голос: выключен';
+                }
+                function updateTraffic(dist){
+                    redLight.classList.remove('active');
+                    yellowLight.classList.remove('active');
+                    greenLight.classList.remove('active');
+                    if(!dist){ redLight.classList.add('active'); return; }
+                    if(dist>=30 && dist<=40){
+                        greenLight.classList.add('active');
+                        statusDiv.innerHTML = '🟢 Идеальное расстояние!';
+                        saveBtn.disabled = false;
+                    }else if((dist>=25 && dist<30) || (dist>40 && dist<=50)){
+                        yellowLight.classList.add('active');
+                        statusDiv.innerHTML = '🟡 Допустимо, но можно точнее';
+                        saveBtn.disabled = true;
+                    }else{
+                        redLight.classList.add('active');
+                        statusDiv.innerHTML = dist<25 ? '🔴 Слишком близко! Отодвиньтесь' : '🔴 Слишком далеко! Приблизьтесь';
+                        saveBtn.disabled = true;
+                    }
+                }
+                function measureLux(){
+                    if(!video.videoWidth || video.readyState<2) return 0;
+                    if(!canvas40x30){ canvas40x30=document.createElement('canvas'); canvas40x30.width=40; canvas40x30.height=30; }
+                    const ctxL=canvas40x30.getContext('2d');
+                    ctxL.drawImage(video,0,0,40,30);
+                    const dataL=ctxL.getImageData(0,0,40,30).data;
+                    let lum=0;
+                    for(let i=0;i<dataL.length;i+=4) lum+=0.2126*dataL[i]+0.7152*dataL[i+1]+0.0722*dataL[i+2];
+                    const avgLum=lum/(40*30);
+                    let lux=Math.pow(avgLum/200,1.6)*1000;
+                    lux=Math.min(1200,Math.max(0,lux));
+                    return Math.round(lux);
+                }
+                function analyzeFace(){
+                    if(!video.videoWidth || video.readyState<2) return null;
+                    const canvas=document.createElement('canvas');
+                    canvas.width=200; canvas.height=200;
+                    const cctx=canvas.getContext('2d');
+                    cctx.drawImage(video,0,0,200,200);
+                    const data=cctx.getImageData(0,0,200,200).data;
+                    const zones={cheeks:{x:50,y:110,w:100,h:35},eyes:{x:70,y:80,w:60,h:25}};
+                    let results={};
+                    for(let[name,zone] of Object.entries(zones)){
+                        let rSum=0,gSum=0,bSum=0,cnt=0;
+                        for(let y=zone.y; y<zone.y+zone.h; y++){
+                            for(let x=zone.x; x<zone.x+zone.w; x++){
+                                const idx=(y*200+x)*4;
+                                rSum+=data[idx]; gSum+=data[idx+1]; bSum+=data[idx+2]; cnt++;
+                            }
+                        }
+                        if(cnt>0) results[name]={ redness:(rSum/cnt)/(gSum/cnt+0.01), dryness:Math.sqrt(Math.abs(1-(rSum+gSum+bSum)/(3*cnt)/128)) };
+                    }
+                    return results;
+                }
+                function updateMetricsDisplay(metrics){
+                    if(!metrics){
+                        valRedness.textContent='—';
+                        valDryness.textContent='—';
+                        valSwelling.textContent='—';
+                        return;
+                    }
+                    const redness=metrics.cheeks?.redness||1.0;
+                    valRedness.textContent=Math.round((redness-1.0)*100)+'%';
+                    const dryness=metrics.cheeks?.dryness||0.5;
+                    valDryness.textContent=Math.round((dryness-0.5)*200)+'%';
+                    const swelling=metrics.eyes?.dryness||0.5;
+                    valSwelling.textContent=Math.round((swelling-0.5)*200)+'%';
+                }
+                function initFaceMesh(){
+                    faceMesh=new FaceMesh({ locateFile:(f)=>'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/'+f });
+                    faceMesh.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+                    faceMesh.onResults(onResults);
+                }
+                function onResults(results){
+                    if(!active || !overlayCanvas) return;
+                    const w=video.videoWidth||640;
+                    const h=video.videoHeight||480;
+                    overlayCanvas.width=w;
+                    overlayCanvas.height=h;
+                    ctx.clearRect(0,0,w,h);
+                    
+                    const lux=measureLux();
+                    luxHistory.push(lux);
+                    if(luxHistory.length>5) luxHistory.shift();
+                    currentLux=Math.round(luxHistory.reduce((a,b)=>a+b,0)/luxHistory.length);
+                    lightValEl.innerHTML=currentLux+' лк';
+                    
+                    const faceMetrics=analyzeFace();
+                    if(faceMetrics){ currentMetrics=faceMetrics; updateMetricsDisplay(faceMetrics); }
+                    
+                    if(results.multiFaceLandmarks && results.multiFaceLandmarks.length>0){
+                        const lm=results.multiFaceLandmarks[0];
+                        const leftEye=lm[33];
+                        const rightEye=lm[263];
+                        if(leftEye && rightEye){
+                            const le={ x:leftEye.x*w, y:leftEye.y*h };
+                            const re={ x:rightEye.x*w, y:rightEye.y*h };
+                            const eyePx=Math.hypot(le.x-re.x, le.y-re.y);
+                            if(eyePx>15){
+                                let estimatedDistance=(eyeDistanceCm*focalLength)/eyePx;
+                                estimatedDistance=Math.min(100,Math.max(15,estimatedDistance));
+                                lastDistances.push(estimatedDistance);
+                                if(lastDistances.length>8) lastDistances.shift();
+                                const smoothedDist=lastDistances.reduce((a,b)=>a+b,0)/lastDistances.length;
+                                currentDistance=Math.round(smoothedDist);
+                                distanceSpan.innerHTML=currentDistance+' см';
+                                distValEl.innerHTML=currentDistance+' см';
+                                methodInfo.innerHTML='📏 расстояние: '+currentDistance+' см | 💡 свет: '+currentLux+' лк';
+                                updateTraffic(currentDistance);
+                            }else{
+                                methodInfo.innerHTML='📏 расстояние: лицо слишком близко | 💡 свет: '+currentLux+' лк';
+                            }
+                            ctx.strokeStyle='#22d3ee';
+                            ctx.lineWidth=2;
+                            ctx.beginPath();
+                            ctx.moveTo(le.x,le.y);
+                            ctx.lineTo(re.x,re.y);
+                            ctx.stroke();
+                            ctx.fillStyle='#22d3ee';
+                            ctx.beginPath(); ctx.arc(le.x,le.y,4,0,2*Math.PI); ctx.fill();
+                            ctx.beginPath(); ctx.arc(re.x,re.y,4,0,2*Math.PI); ctx.fill();
+                            ctx.fillStyle='white';
+                            ctx.font='bold 12px monospace';
+                            ctx.fillText("33",le.x+8,le.y-4);
+                            ctx.fillText("263",re.x+8,re.y-4);
+                        }
+                    }
+                    ctx.beginPath();
+                    ctx.ellipse(w/2,h*0.45,w*0.23,h*0.28,0,0,2*Math.PI);
+                    ctx.strokeStyle='#38bdf8';
+                    ctx.setLineDash([8,12]);
+                    ctx.lineWidth=2;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                async function startCamera(){
+                    try{
+                        stream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ ideal:640 } } });
+                        video.srcObject=stream;
+                        await video.play();
+                        active=true;
+                        initFaceMesh();
+                        const process=async()=>{ if(active && faceMesh){ await faceMesh.send({ image:video }); requestAnimationFrame(process); } };
+                        process();
+                        showToast('📷 Камера запущена');
+                        startBtn.disabled=true;
+                        speakText('Камера запущена');
+                    }catch(e){ showToast('❌ Ошибка доступа к камере',true); }
+                }
+                function saveMeasurement(){
+                    if(!currentDistance || currentDistance<28 || currentDistance>45){ showToast('❌ Достигните зелёного света (28-45 см)',true); return; }
+                    if(!currentMetrics){ showToast('❌ Лицо не обнаружено',true); return; }
+                    const measurement={ id:Date.now(), date:new Date().toLocaleString('ru-RU'), timestamp:Date.now(), distance:currentDistance, lux:currentLux, metrics:JSON.parse(JSON.stringify(currentMetrics)) };
+                    if(!baselineMeasurement){
+                        baselineMeasurement={ id:measurement.id, date:measurement.date, distance:measurement.distance, lux:measurement.lux };
+                        baselineMetrics=JSON.parse(JSON.stringify(currentMetrics));
+                        localStorage.setItem('faceBase',JSON.stringify(baselineMeasurement));
+                        localStorage.setItem('baseline_metrics',JSON.stringify(baselineMetrics));
+                        showToast('✅ ЭТАЛОН сохранён! (зелёный свет)');
+                        speakText('Эталон сохранён');
+                    }else{
+                        measurementsHistory.push(measurement);
+                        metricsHistory.push({ date:measurement.date, metrics:measurement.metrics, lux:measurement.lux, distance:measurement.distance });
+                        localStorage.setItem('measurements_history',JSON.stringify(measurementsHistory));
+                        localStorage.setItem('metrics_history',JSON.stringify(metricsHistory));
+                        showToast('✅ Замер сохранён! ('+measurementsHistory.length+' замеров)');
+                        speakText('Замер сохранён');
+                    }
+                    drawGraph();
+                }
+                function drawGraph(){
+                    const canvas=document.getElementById('trendGraphCanvas');
+                    if(!canvas) return;
+                    const allData=[];
+                    if(baselineMetrics) allData.push({ date:baselineMeasurement?baselineMeasurement.date.split(',')[0]:'ЭТАЛОН', isBaseline:true, metrics:baselineMetrics });
+                    for(let i=0;i<metricsHistory.length;i++) allData.push({ date:metricsHistory[i].date.split(',')[0], isBaseline:false, metrics:metricsHistory[i].metrics });
+                    if(allData.length===0){
+                        const cctx=canvas.getContext('2d');
+                        canvas.width=canvas.clientWidth||500;
+                        canvas.height=280;
+                        cctx.fillStyle='#0a0f1a';
+                        cctx.fillRect(0,0,canvas.width,canvas.height);
+                        cctx.fillStyle='#94a3b8';
+                        cctx.font='12px system-ui';
+                        cctx.textAlign='center';
+                        cctx.fillText('Нет данных. Сделайте первый замер.',canvas.width/2,canvas.height/2);
+                        return;
+                    }
+                    canvas.width=canvas.clientWidth||500;
+                    canvas.height=280;
+                    const cctx=canvas.getContext('2d');
+                    const w=canvas.width;
+                    const h=canvas.height;
+                    cctx.clearRect(0,0,w,h);
+                    cctx.fillStyle='#0a0f1a';
+                    cctx.fillRect(0,0,w,h);
+                    const baselineRedness=baselineMetrics?.cheeks?.redness||1.0;
+                    const baselineDryness=baselineMetrics?.cheeks?.dryness||0.5;
+                    const dataPoints=[];
+                    for(let i=0;i<allData.length;i++){
+                        const m=allData[i];
+                        const redness=m.metrics?.cheeks?.redness||baselineRedness;
+                        const dryness=m.metrics?.cheeks?.dryness||baselineDryness;
+                        const swelling=m.metrics?.eyes?.dryness||0.5;
+                        dataPoints.push({ date:m.date, redness:Math.min(40,Math.max(-40,((redness-baselineRedness)/baselineRedness)*100)), dryness:Math.min(40,Math.max(-40,((dryness-baselineDryness)/baselineDryness)*100)), swelling:Math.min(40,Math.max(-40,((swelling-0.5)/0.5)*100)) });
+                    }
+                    const pad={ left:45, right:20, top:25, bottom:40 };
+                    const graphW=w-pad.left-pad.right;
+                    const graphH=h-pad.top-pad.bottom;
+                    const stepX=dataPoints.length>1?graphW/(dataPoints.length-1):graphW;
+                    const zeroY=pad.top+graphH/2;
+                    cctx.strokeStyle='#334155';
+                    cctx.lineWidth=0.5;
+                    for(let y=-40;y<=40;y+=20){
+                        const yPos=zeroY-(y/40)*(graphH/2);
+                        cctx.beginPath(); cctx.moveTo(pad.left,yPos); cctx.lineTo(pad.left+graphW,yPos); cctx.stroke();
+                        cctx.fillStyle='#64748b';
+                        cctx.font='9px monospace';
+                        cctx.fillText(y+'%',pad.left-35,yPos+3);
+                    }
+                    cctx.beginPath();
+                    cctx.moveTo(pad.left,zeroY);
+                    cctx.lineTo(pad.left+graphW,zeroY);
+                    cctx.strokeStyle='#10b981';
+                    cctx.lineWidth=2;
+                    cctx.stroke();
+                    const metricsArr=[{key:'dryness',color:'#f59e0b'},{key:'redness',color:'#ef4444'},{key:'swelling',color:'#38bdf8'}];
+                    for(const metric of metricsArr){
+                        cctx.beginPath();
+                        let first=true;
+                        for(let i=0;i<dataPoints.length;i++){
+                            const val=dataPoints[i][metric.key];
+                            const x=pad.left+i*stepX;
+                            const y=zeroY-(val/40)*(graphH/2);
+                            if(first){ cctx.moveTo(x,y); first=false; }else{ cctx.lineTo(x,y); }
+                        }
+                        cctx.strokeStyle=metric.color;
+                        cctx.lineWidth=2.5;
+                        cctx.stroke();
+                        for(let i=0;i<dataPoints.length;i++){
+                            const val=dataPoints[i][metric.key];
+                            const x=pad.left+i*stepX;
+                            const y=zeroY-(val/40)*(graphH/2);
+                            cctx.fillStyle=metric.color;
+                            cctx.beginPath(); cctx.arc(x,y,4,0,2*Math.PI); cctx.fill();
+                            cctx.fillStyle='white';
+                            cctx.font='bold 8px monospace';
+                            cctx.fillText((val>0?'+':'')+val.toFixed(1)+'%',x+6,y-4);
+                        }
+                    }
+                    cctx.fillStyle='#94a3b8';
+                    cctx.font='8px monospace';
+                    for(let i=0;i<dataPoints.length;i++){
+                        const x=pad.left+i*stepX;
+                        let label=dataPoints[i].date;
+                        if(allData[i]?.isBaseline) label='🟢 '+label;
+                        cctx.fillText(label,x-15,h-12);
+                    }
+                }
+                function performWhiteCalibration(){ showToast('✅ Калибровка белым выполнена'); document.getElementById('whiteCalibInline').style.display='none'; speakText('Калибровка выполнена'); }
+                function saveDistanceCalibration(){
+                    eyeDistanceCm=parseFloat(document.getElementById('eyeDistanceInput').value);
+                    focalLength=parseInt(document.getElementById('focalInput').value);
+                    localStorage.setItem('eyeDistanceCm',eyeDistanceCm);
+                    localStorage.setItem('focalLength',focalLength);
+                    showToast('✅ Калибровка: '+eyeDistanceCm+' см между глазами');
+                    document.getElementById('distanceCalibInline').style.display='none';
+                    speakText('Калибровка сохранена');
+                }
+                async function toggleTorch(){
+                    if(!stream){ showToast('❌ Сначала запустите камеру',true); return; }
+                    const track=stream.getVideoTracks()[0];
+                    if(!track) return;
+                    try{
+                        const caps=track.getCapabilities();
+                        if(caps.torch){
+                            const newState=!(await track.getSettings()).torch;
+                            await track.applyConstraints({ advanced:[{ torch:newState }] });
+                            showToast(newState?'🔦 Фонарик ВКЛЮЧЁН':'💡 Фонарик ВЫКЛЮЧЕН');
+                            speakText(newState?'Фонарик включён':'Фонарик выключен');
+                        }else{ showToast('❌ Фонарик не поддерживается',true); }
+                    }catch(err){ showToast('Ошибка',true); }
+                }
+                function switchTheme(){
+                    const themes={ dark:'light', light:'highContrast', highContrast:'dark' };
+                    currentTheme=themes[currentTheme];
+                    document.body.setAttribute('data-theme',currentTheme);
+                    showToast('Тема: '+currentTheme);
+                }
+                function downloadReport(){
+                    if(!currentDistance){ showToast('❌ Нет данных',true); return; }
+                    const now=new Date().toLocaleString('ru-RU');
+                    const baseDate=baselineMeasurement?baselineMeasurement.date:'не установлен';
+                    let report='ОТЧЁТ: АНТИ-ИИ ЗЕРКАЛО\\n================================\\n📅 Дата отчёта: '+now+'\\n📅 Дата эталона: '+baseDate+'\\n📏 Расстояние: '+currentDistance+' см\\n💡 Освещение: '+currentLux+' лк\\n📊 Всего замеров: '+measurementsHistory.length+'\\n\\n🔹 ДИНАМИКА ОТНОСИТЕЛЬНО ЭТАЛОНА:\\n';
+                    for(let i=0;i<metricsHistory.length;i++){
+                        const m=metricsHistory[i];
+                        const redness=((m.metrics?.cheeks?.redness-baselineMetrics?.cheeks?.redness)/baselineMetrics?.cheeks?.redness*100).toFixed(1);
+                        const dryness=((m.metrics?.cheeks?.dryness-baselineMetrics?.cheeks?.dryness)/baselineMetrics?.cheeks?.dryness*100).toFixed(1);
+                        report+='   📅 '+m.date.split(',')[0]+': сухость '+(dryness>0?'+':'')+dryness+'%, покраснение '+(redness>0?'+':'')+redness+'%\\n';
+                    }
+                    report+='\\n🔒 Данные хранятся локально\\n================================\\n⚠️ Инструмент самоконтроля. Не диагноз.';
+                    const blob=new Blob(["\\uFEFF"+report],{type:'text/plain;charset=utf-8'});
+                    const a=document.createElement('a');
+                    a.href=URL.createObjectURL(blob);
+                    a.download='mirror_report_'+Date.now()+'.txt';
+                    a.click();
+                    showToast('📄 Отчёт скачан');
+                }
+                function exportJSON(){
+                    const data={ baseline:baselineMeasurement, history:measurementsHistory, metrics:metricsHistory };
+                    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+                    const a=document.createElement('a');
+                    a.href=URL.createObjectURL(blob);
+                    a.download='mirror_data_'+Date.now()+'.json';
+                    a.click();
+                    showToast('📦 JSON экспортирован');
+                }
+                function toggleVoice(){
+                    voiceEnabled=!voiceEnabled;
+                    localStorage.setItem('mirror_voice',voiceEnabled);
+                    const voiceBtn=document.getElementById('voiceSettingsBtn');
+                    if(voiceBtn) voiceBtn.innerHTML=voiceEnabled?'🔊 ГОЛОС ВКЛ':'🔇 ГОЛОС ВЫКЛ';
+                    showToast(voiceEnabled?'Голос включён':'Голос выключен');
+                    if(voiceEnabled) speakText('Голос активирован');
+                    updateVoiceStatusDisplay();
+                }
+                function showSupport(){
+                    alert('🤝 ПОДДЕРЖАТЬ ПРОЕКТ 💙\\n\\nПриложение бесплатное. Было и останется.\\n\\nЕсли проект помог вам или вашим близким — можете поддержать разработку добровольным переводом.\\n\\n📱 ПЕРЕВОД ПО НОМЕРУ ТЕЛЕФОНА:\\n8-920-227-56-76\\n\\n✅ Деньги придут мгновенно. Без комиссии. Безопасно.\\n\\n❤️ Спасибо за поддержку!\\n\\n🌟 Каталог бесплатных офлайн-приложений Anti-AI Shield:\\n👉 https://ancf-hue.github.io/');
+                }
+                
+                // ========== ПОЛНАЯ ИНСТРУКЦИЯ (4 ОКНА) ==========
+                function showHowToUse(){
+                    alert(\`📋 ИНСТРУКЦИЯ «Анти-ИИ Электронное зеркало» (1/4)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 ГЛАВНОЕ ПРАВИЛО
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Одинаковое расстояние + одинаковый свет = точные результаты.
+Меняется хоть одно число → замеры несравнимы.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 ПЕРВЫЙ РАЗ (НАСТРОЙКА КАМЕРЫ)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Калибровка белым листом — делается ОДИН РАЗ:
+1. Нажми «⚙️ НАСТРОЙКИ» → «📄 КАЛИБРОВКА БЕЛЫМ ЛИСТОМ»
+2. Поднеси чистый белый лист к камере
+3. Нажми «✅ ВЫПОЛНИТЬ»
+
+Зачем: Камера настраивается на правильное восприятие белого цвета.
+💡 Если меняешь телефон — сделай калибровку заново.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ БЫСТРЫЙ СТАРТ (ПЕРВЫЙ ЗАМЕР)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 📷 Нажми «Запустить сканер»
+2. 🔦 Включи фонарик (каждый раз обязательно)
+3. 📏 Встань так, чтобы лицо было в овале
+4. 💡 Запомни два числа: см и лк
+5. 🟢 Дождись зелёного света
+6. 📌 Нажми «Сохранить замер»
+
+⚠️ ПЕРВЫЙ ЗАМЕР = ЭТАЛОН (0%)
+Все будущие результаты показывают отклонение от этого дня.\`);
+                    
+                    alert(\`📋 ИНСТРУКЦИЯ «Анти-ИИ Электронное зеркало» (2/4)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 ЕЖЕДНЕВНЫЙ ЗАМЕР
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Перед сохранением проверь:
+✅ Фонарик включён?
+✅ Расстояние = эталон (±1 см)?
+✅ Люксы = эталон (±10%)?
+✅ Лицо в центре овала?
+
+→ Если всё ✅ → сохраняй замер
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 КАК ЧИТАТЬ РЕЗУЛЬТАТЫ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌡️ Покраснение: +8% → краснее / −5% → спокойнее
+🧴 Сухость кожи: +12% → суше / −3% → увлажнённее
+💧 Отёчность: +10% → больше отёк / −4% → спал
+
+📈 График: кнопка «Показать график»
+🟢 Зелёная линия = эталон (0%)
+🟡 Жёлтая = сухость | 🔴 Красная = покраснение | 🔵 Синяя = отёчность\`);
+                    
+                    alert(\`📋 ИНСТРУКЦИЯ «Анти-ИИ Электронное зеркало» (3/4)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚙️ ВСЕ КНОПКИ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ГЛАВНЫЙ ЭКРАН:
+📷 Запустить сканер — включает камеру
+📌 Сохранить замер — сохраняет текущее состояние
+⚙️ Настройки — открывает меню
+📊 Показать график — показывает динамику
+🔦 Фонарик — включает подсветку (каждый день)
+🤝 Поддержать проект — номер для перевода
+
+НАСТРОЙКИ (8 кнопок):
+📄 Калибровка белым листом — настроить камеру (один раз)
+⚙️ Калибровка расстояния — укажи межглазное расстояние (5-8 см)
+🎨 Сменить тему — тёмная / светлая / контрастная
+📄 Скачать отчёт — резервная копия в txt
+📦 Экспорт JSON — полная копия данных
+🔇/🔊 Голос — вкл/выкл подсказки
+❓ Как пользоваться — эта инструкция
+🗑️ Очистить память — удалить всё\`);
+                    
+                    alert(\`📋 ИНСТРУКЦИЯ «Анти-ИИ Электронное зеркало» (4/4)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ ВАЖНЫЕ ОГРАНИЧЕНИЯ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔦 Фонарик — включай каждый раз (одинаковый свет)
+📏 Дистанция — всегда одна (выбрал 27 см → всегда 27 см)
+📉 Показатели относительные (сравнение с твоим эталоном)
+🔒 Все данные — только на твоём телефоне (офлайн)
+❌ Не медицинский диагноз (инструмент самоконтроля)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆘 ЕСЛИ НЕ РАБОТАЕТ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 Нет зелёного света → выйди за 25-50 см; убери очки/блики
+💡 Люксы скачут → включи фонарик; проверь заряд
+📏 См не совпадают → плавно двигай телефон
+📈 Резкий скачок % → проверь условия; если совпали — обрати внимание на сон/стресс
+🎤 Голос не работает → нажми кнопку голоса в настройках; проверь звук
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 ПАМЯТКА В ОДНУ СТРОКУ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 Один раз — калибровка белым листом
+→ 🔦 Каждый день — фонарик
+→ 📏 Встань на свои см
+→ 💡 Добейся тех же лк
+→ 🟢 Сохрани
+→ 📊 Сравнивай %
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+© Анти-ИИ Электронное зеркало. Инструмент самоконтроля.
+🔒 Все данные только на вашем устройстве.\`);
+                }
+                
+                function clearAllData(){
+                    if(!confirm('Удалить ВСЕ данные?')) return;
+                    localStorage.clear();
+                    baselineMeasurement=null;
+                    measurementsHistory=[];
+                    metricsHistory=[];
+                    baselineMetrics=null;
+                    currentMetrics=null;
+                    lastDistances=[];
+                    showToast('🗑️ Все данные удалены');
+                    drawGraph();
+                }
+                function openSettings(){ settingsModal.classList.add('show'); }
+                function closeSettings(){ settingsModal.classList.remove('show'); }
+                
+                function init(){
+                    startBtn.onclick=startCamera;
+                    saveBtn.onclick=saveMeasurement;
+                    settingsBtn.onclick=openSettings;
+                    closeSettingsBtn.onclick=closeSettings;
+                    if(showGraphBtn) showGraphBtn.onclick=()=>{ if(graphSection) graphSection.style.display='block'; drawGraph(); };
+                    torchBtn.onclick=toggleTorch;
+                    supportMainBtn.onclick=showSupport;
+                    settingsModal.onclick=(e)=>{ if(e.target===settingsModal) closeSettings(); };
+                    document.getElementById('whiteCalibSettingsBtn').onclick=()=>{ document.getElementById('whiteCalibInline').style.display='block'; document.getElementById('distanceCalibInline').style.display='none'; };
+                    document.getElementById('doWhiteCalibInlineBtn').onclick=performWhiteCalibration;
+                    document.getElementById('distanceCalibSettingsBtn').onclick=()=>{ document.getElementById('distanceCalibInline').style.display='block'; document.getElementById('whiteCalibInline').style.display='none'; };
+                    document.getElementById('saveDistanceCalibBtn').onclick=saveDistanceCalibration;
+                    document.getElementById('themeSettingsBtn').onclick=()=>{ switchTheme(); closeSettings(); };
+                    document.getElementById('exportReportSettingsBtn').onclick=()=>{ downloadReport(); closeSettings(); };
+                    document.getElementById('exportJsonSettingsBtn').onclick=()=>{ exportJSON(); closeSettings(); };
+                    document.getElementById('voiceSettingsBtn').onclick=()=>{ toggleVoice(); };
+                    document.getElementById('howToUseSettingsBtn').onclick=()=>{ showHowToUse(); closeSettings(); };
+                    document.getElementById('deleteSettingsBtn').onclick=()=>{ clearAllData(); closeSettings(); };
+                    drawGraph();
+                    updateVoiceStatusDisplay();
+                    setInterval(updateVoiceStatusDisplay,1000);
+                }
+                init();
+            })();
+        `;
+    }
+    
+    // Запуск: 2 секунды фото, потом видео на 3 секунды, затем переход
+    function switchToVideo(){
+        if(videoStarted) return;
+        videoStarted=true;
+        introVideo.style.zIndex='2';
+        photo.style.zIndex='1';
+        introVideo.play().catch(e=>console.log);
+        setTimeout(()=>{
+            if(introVideo && !introVideo.ended) introVideo.pause();
+            goToMirror();
+        }, 3000);
+    }
+    
+    if(photo.complete && photo.naturalWidth) setTimeout(switchToVideo,2000);
+    else{ photo.onload=()=>setTimeout(switchToVideo,2000); setTimeout(()=>{ if(!videoStarted) switchToVideo(); },2500); }
+    
+    updateSoundBtn();
+</script>
+</body>
+</html>
