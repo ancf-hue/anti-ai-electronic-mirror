@@ -1,0 +1,11 @@
+# robots.txt для Анти-ИИ Электронное зеркало
+# Разрешаем всем поисковым роботам индексировать сайт
+
+User-agent: *
+Allow: /
+
+# Указываем путь к карте сайта
+Sitemap: https://anti-ai-electronic-mirror.vercel.app/sitemap.xml
+
+# Запрещаем индексировать пустые или служебные страницы (если такие появятся)
+Disallow: /empty.html
